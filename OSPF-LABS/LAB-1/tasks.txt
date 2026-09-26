@@ -1,0 +1,34 @@
+Task 1
+Configure hostnames and IP addresses on all routers as illustrated in the
+network topology.
+
+Task 2
+Using interface-based configuration, configure the OSPF backbone (area 0)
+on the LAN segment between R1 and R4. In the future, additional routers
+may be added to this segment. Ensure that no DR/BDR election is held on
+this segment; however, ensure that multiple routers can exist on the same
+segment. Do NOT modify any OSPF priority values.
+
+Task 3
+Using interface-based configuration, configure OSPF area 1 between R1, R3
+and R4. Configure MD5 authentication for area 1 using the password
+‘CCNP’. Verify your configuration.
+
+Task 4
+Using interface-based configuration, configure OSPF area 2 between R1 and
+R2. R1 should not advertise any inter-area routes into area 2; however, a
+default route should be advertised by default. This default route should be
+advertised into area 2 so that it appears in the routing table of R2 with a route
+metric of 500. Do NOT modify interface bandwidth or cost values when
+completing this task. Verify the configuration.
+
+Task 5
+R2 should inject the 150.2.2.0/24 subnet into area 2 as an External N1 route
+with a route tag of 2222. Verify your configuration.
+
+Task 6
+Configure a secondary subnet of 150.1.1.0/29 on the LAN segment betweenR1 and R4. Assign the 150.1.1.1/29 address to R1 and 150.1.1.4/29 address
+to R4. This subnet should not be advertised into area 1; however, R2 should
+be able to reach it. You are NOT allowed to use any distribute-lists or other
+forms of filters to complete this task. In addition to this, you are NOT
+allowed to configure any static routes. Verify your OSPF configuration.

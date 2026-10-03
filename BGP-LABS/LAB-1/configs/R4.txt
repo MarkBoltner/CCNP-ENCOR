@@ -1,0 +1,23 @@
+R4
+----
+en
+conf t
+hostname R4
+int e1/0
+duplex full
+no sh
+ip add 10.0.0.14 255.255.255.252
+int e1/1
+duplex full
+no sh
+ip add 150.4.4.4 255.255.255.0
+exit
+
+router bgp 254
+bgp router-id 4.4.4.4
+neighbor 10.0.0.13 remote-as 254
+neighbor 10.0.0.13 password 0 CCNP
+neighbor 10.0.0.13 send-community standard
+timers bgp 5 15
+
+neighbor 10.0.0.13 default-originate

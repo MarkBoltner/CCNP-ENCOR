@@ -1,0 +1,26 @@
+R2
+----
+en
+conf t
+hostname R2
+int e1/0
+duplex full
+no sh
+ip add 10.0.0.2 255.255.255.252
+int e1/1
+duplex full
+no sh
+ip add 150.2.2.2 255.255.255.0
+exit
+
+router bgp 254
+bgp router-id 2.2.2.2
+neighbor 10.0.0.1 remote-as 254
+neighbor 10.0.0.1 password 0 CCNP
+neighbor 10.0.0.1 send-community standard
+timers bgp 5 15
+
+network 150.2.2.0 mask 255.255.255.0 route-map TASK3 
+
+route-map TASK3 permit 1
+set community 254:222

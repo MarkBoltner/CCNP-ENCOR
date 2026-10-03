@@ -362,15 +362,6 @@ bgp-lab-01/
 └── pcap/           # bgp-lab-01.pcapng, single capture on the R1–R3 link (section 5)
 ```
 
-## 9. Interview Talking Points
-
-- Why iBGP needs a full mesh, and two ways to scale it (route reflectors, confederations).
-- How a route reflector avoids loops (ORIGINATOR_ID, CLUSTER_LIST).
-- Why next hop is unchanged in iBGP and what breaks when it is not reachable.
-- Difference between hard and soft reset, and when each is justified.
-- How `default-originate` differs from `redistribute` and `network`, and the risk of a blanket default in production.
-- How I troubleshot a forwarding problem that was hidden by a default route (BGP table vs RIB vs CEF).
-
-## 10. Conclusion
+## 9. Conclusion
 
 This lab replaced a full-mesh iBGP design with two route reflectors and achieved complete reachability between four LANs using only BGP features: no IGP, no static routes, no redistribution. The most valuable lessons came from the failures. Next-hop behaviour on reflected routes, the need for a soft reset after policy changes, and a default route masking an unreachable next hop are the kinds of problems that appear in production and in exam troubleshooting scenarios. Verification was done at three levels: control plane (`show ip bgp`), forwarding plane (`show ip cef`, extended ping, traceroute), and packet level (Wireshark captures of OPEN, KEEPALIVE and UPDATE messages).

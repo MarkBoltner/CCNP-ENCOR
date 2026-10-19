@@ -1,0 +1,26 @@
+Verification: Verification 02 - Loopback reachability
+Router: R1
+Timestamp (controller): 2026-10-19T23:42:37+03:00
+========================================
+COMMAND 1: show ip route eigrp
+----------------------------------------
+1.0.0.0/8 is variably subnetted, 2 subnets, 2 masks
+D       1.0.0.0/8 is a summary, 00:48:06, Null0
+D    2.0.0.0/8 [90/409600] via 10.0.0.2, 00:47:58, Ethernet1/0
+D    3.0.0.0/8 [90/409600] via 10.0.0.6, 00:47:57, Ethernet1/1
+D    4.0.0.0/8 [90/435200] via 10.0.0.6, 00:47:56, Ethernet1/1
+     200.0.0.0/24 is variably subnetted, 2 subnets, 2 masks
+D       200.0.0.0/24 is a summary, 00:48:06, Null0
+     10.0.0.0/8 is variably subnetted, 4 subnets, 2 masks
+D       10.0.0.12/30 [90/307200] via 10.0.0.6, 00:47:57, Ethernet1/1
+D       10.0.0.0/8 is a summary, 00:48:06, Null0
+D*EX 0.0.0.0/0 [170/281856] via 200.0.0.1, 00:48:04, Ethernet1/2
+
+COMMAND 2: ping 4.4.4.4 source 1.1.1.1
+----------------------------------------
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 4.4.4.4, timeout is 2 seconds:
+Packet sent with a source address of 1.1.1.1 
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 20/23/32 ms
+

@@ -1,0 +1,47 @@
+---
+- name: Verification 12 - BGP path preference
+  hosts: routers
+  gather_facts: false
+  vars:
+    result_dir: "{{ playbook_dir }}/../results/12_path_preference"
+    verification_commands:
+      R1:
+        - "show ip bgp 150.2.2.0"
+        - "show ip bgp 150.4.4.0"
+      R2:
+        - "show ip bgp 150.4.4.0"
+      R3:
+        - "show ip bgp 150.2.2.0"
+        - "show ip bgp 150.4.4.0"
+      R4:
+        - "show ip bgp 150.2.2.0"
+  tasks:
+    - name: Ensure local result directory exists
+      ansible.builtin.file:
+        path: "{{ result_dir }}"
+        state: directory
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Run verification commands
+      cisco.ios.ios_command:
+        commands: "{{ verification_commands[inventory_hostname] }}"
+      register: verification_output
+
+    - name: Save command output for this router
+      ansible.builtin.copy:
+        dest: "{{ result_dir }}/{{ inventory_hostname }}.txt"
+        content: |
+          Verification: Verification 12 - BGP path preference
+          Router: {{ inventory_hostname }}
+          Timestamp (controller): {{ lookup('pipe', 'date -Is') }}
+          ========================================
+          {% for result in verification_output.stdout %}
+          COMMAND {{ loop.index }}: {{ verification_commands[inventory_hostname][loop.index0] }}
+          ----------------------------------------
+          {{ result }}
+          
+          {% endfor %}
+      delegate_to: localhost
+      become: false

@@ -1,0 +1,53 @@
+---
+- name: Verification 13 - Full LAN reachability ping matrix
+  hosts: routers
+  gather_facts: false
+  vars:
+    result_dir: "{{ playbook_dir }}/../results/13_ping_matrix"
+    verification_commands:
+      R1:
+        - "ping 150.2.2.2 source 150.1.1.1"
+        - "ping 150.3.3.3 source 150.1.1.1"
+        - "ping 150.4.4.4 source 150.1.1.1"
+      R2:
+        - "ping 150.1.1.1 source 150.2.2.2"
+        - "ping 150.3.3.3 source 150.2.2.2"
+        - "ping 150.4.4.4 source 150.2.2.2"
+      R3:
+        - "ping 150.1.1.1 source 150.3.3.3"
+        - "ping 150.2.2.2 source 150.3.3.3"
+        - "ping 150.4.4.4 source 150.3.3.3"
+      R4:
+        - "ping 150.1.1.1 source 150.4.4.4"
+        - "ping 150.2.2.2 source 150.4.4.4"
+        - "ping 150.3.3.3 source 150.4.4.4"
+  tasks:
+    - name: Ensure local result directory exists
+      ansible.builtin.file:
+        path: "{{ result_dir }}"
+        state: directory
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Run verification commands
+      cisco.ios.ios_command:
+        commands: "{{ verification_commands[inventory_hostname] }}"
+      register: verification_output
+
+    - name: Save command output for this router
+      ansible.builtin.copy:
+        dest: "{{ result_dir }}/{{ inventory_hostname }}.txt"
+        content: |
+          Verification: Verification 13 - Full LAN reachability ping matrix
+          Router: {{ inventory_hostname }}
+          Timestamp (controller): {{ lookup('pipe', 'date -Is') }}
+          ========================================
+          {% for result in verification_output.stdout %}
+          COMMAND {{ loop.index }}: {{ verification_commands[inventory_hostname][loop.index0] }}
+          ----------------------------------------
+          {{ result }}
+          
+          {% endfor %}
+      delegate_to: localhost
+      become: false

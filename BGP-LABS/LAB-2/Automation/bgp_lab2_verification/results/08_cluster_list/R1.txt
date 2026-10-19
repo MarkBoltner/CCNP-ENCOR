@@ -1,0 +1,15 @@
+Verification: Verification 08 - Cluster list and originator
+Router: R1
+Timestamp (controller): 2026-10-19T23:45:17+03:00
+========================================
+COMMAND 1: show ip bgp 150.2.2.0
+----------------------------------------
+BGP routing table entry for 150.2.2.0/24, version 3
+Paths: (1 available, best #1, table Default-IP-Routing-Table, not advertised to EBGP peer)
+  Advertised to update-groups:
+        1    3
+  Local, (Received from a RR-client)
+    2.2.2.2 (metric 409600) from 2.2.2.2 (2.2.2.2)
+      Origin incomplete, metric 0, localpref 100, valid, internal, best
+      Community: no-export
+

@@ -1,0 +1,22 @@
+Verification: Verification 05 - BGP timers and MD5
+Router: R3
+Timestamp (controller): 2026-10-19T23:44:47+03:00
+========================================
+COMMAND 1: show ip bgp neighbors 1.1.1.1 | include hold time|keepalive|MD5|md5|Password
+----------------------------------------
+Last read 00:00:02, last write 00:00:01, hold time is 15, keepalive interval is 5 seconds
+  Configured hold time is 15, keepalive interval is 5 seconds
+Option Flags: nagle, path mtu capable, md5
+
+COMMAND 2: show ip bgp neighbors 2.2.2.2 | include hold time|keepalive|MD5|md5|Password
+----------------------------------------
+Last read 00:00:03, last write 00:00:02, hold time is 15, keepalive interval is 5 seconds
+  Configured hold time is 15, keepalive interval is 5 seconds
+Option Flags: nagle, path mtu capable, md5
+
+COMMAND 3: show ip bgp neighbors 4.4.4.4 | include hold time|keepalive|MD5|md5|Password
+----------------------------------------
+Last read 00:00:00, last write 00:00:02, hold time is 15, keepalive interval is 5 seconds
+  Configured hold time is 15, keepalive interval is 5 seconds
+Option Flags: nagle, path mtu capable, md5
+

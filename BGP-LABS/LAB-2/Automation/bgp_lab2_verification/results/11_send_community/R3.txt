@@ -1,0 +1,16 @@
+Verification: Verification 11 - send-community per neighbor
+Router: R3
+Timestamp (controller): 2026-10-19T23:50:36+03:00
+========================================
+COMMAND 1: show ip bgp neighbors 1.1.1.1 | include community
+----------------------------------------
+
+
+COMMAND 2: show ip bgp neighbors 2.2.2.2 | include community
+----------------------------------------
+
+
+COMMAND 3: show ip bgp neighbors 4.4.4.4 | include community
+----------------------------------------
+
+

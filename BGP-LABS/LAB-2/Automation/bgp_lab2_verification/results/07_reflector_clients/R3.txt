@@ -1,0 +1,12 @@
+Verification: Verification 07 - Route reflector clients
+Router: R3
+Timestamp (controller): 2026-10-19T23:45:07+03:00
+========================================
+COMMAND 1: show ip bgp neighbors 2.2.2.2 | include Route-Reflector
+----------------------------------------
+Route-Reflector Client
+
+COMMAND 2: show ip bgp neighbors 4.4.4.4 | include Route-Reflector
+----------------------------------------
+Route-Reflector Client
+

@@ -1,0 +1,45 @@
+---
+- name: Verification 01 - EIGRP neighbors
+  hosts: routers
+  gather_facts: false
+  vars:
+    result_dir: "{{ playbook_dir }}/../results/01_eigrp_neighbors"
+    verification_commands:
+      R1:
+        - "show ip eigrp neighbors"
+      R2:
+        - "show ip eigrp neighbors"
+      R3:
+        - "show ip eigrp neighbors"
+      R4:
+        - "show ip eigrp neighbors"
+  tasks:
+    - name: Ensure local result directory exists
+      ansible.builtin.file:
+        path: "{{ result_dir }}"
+        state: directory
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Run verification commands
+      cisco.ios.ios_command:
+        commands: "{{ verification_commands[inventory_hostname] }}"
+      register: verification_output
+
+    - name: Save command output for this router
+      ansible.builtin.copy:
+        dest: "{{ result_dir }}/{{ inventory_hostname }}.txt"
+        content: |
+          Verification: Verification 01 - EIGRP neighbors
+          Router: {{ inventory_hostname }}
+          Timestamp (controller): {{ lookup('pipe', 'date -Is') }}
+          ========================================
+          {% for result in verification_output.stdout %}
+          COMMAND {{ loop.index }}: {{ verification_commands[inventory_hostname][loop.index0] }}
+          ----------------------------------------
+          {{ result }}
+          
+          {% endfor %}
+      delegate_to: localhost
+      become: false

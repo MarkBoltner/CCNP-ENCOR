@@ -1,0 +1,28 @@
+Verification: Verification 13 - Full LAN reachability ping matrix
+Router: R4
+Timestamp (controller): 2026-10-19T23:50:51+03:00
+========================================
+COMMAND 1: ping 150.1.1.1 source 150.4.4.4
+----------------------------------------
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 150.1.1.1, timeout is 2 seconds:
+Packet sent with a source address of 150.4.4.4 
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 20/20/20 ms
+
+COMMAND 2: ping 150.2.2.2 source 150.4.4.4
+----------------------------------------
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 150.2.2.2, timeout is 2 seconds:
+Packet sent with a source address of 150.4.4.4 
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 28/32/36 ms
+
+COMMAND 3: ping 150.3.3.3 source 150.4.4.4
+----------------------------------------
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 150.3.3.3, timeout is 2 seconds:
+Packet sent with a source address of 150.4.4.4 
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 8/9/12 ms
+

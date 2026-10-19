@@ -1,0 +1,13 @@
+Verification: Verification 01 - EIGRP neighbors
+Router: R1
+Timestamp (controller): 2026-10-19T23:41:49+03:00
+========================================
+COMMAND 1: show ip eigrp neighbors
+----------------------------------------
+IP-EIGRP neighbors for process 254
+H   Address                 Interface       Hold Uptime   SRTT   RTO  Q  Seq
+                                            (sec)         (ms)       Cnt Num
+2   10.0.0.6                Et1/1             13 00:47:11   10   200  0  8
+1   10.0.0.2                Et1/0             14 00:47:12    5   200  0  3
+0   200.0.0.1               Et1/2             13 00:47:18  651  3906  0  6
+

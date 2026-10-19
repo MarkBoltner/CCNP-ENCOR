@@ -11,6 +11,10 @@ int e1/1
 duplex full
 no sh
 ip add 10.0.0.5 255.255.255.252
+int e1/2
+ip add 200.0.0.2 255.255.255.252
+duplex full
+no sh
 int e1/3
 duplex full
 no sh
@@ -48,6 +52,7 @@ timers bgp 5 15
 
 neighbor 3.3.3.3 send-community
 neighbor 2.2.2.2 send-community
+neighbor 4.4.4.4 send-community
 
 redistribute connected route-map REDISTRIBUTE
 
@@ -56,6 +61,16 @@ exit
 route-map REDISTRIBUTE
 match interface e1/3
 set community no-export
+
+ip domain name LAB
+ip ssh version 2
+crypto key generate rsa
+2048
+username cisco secret cisco
+enable secret cisco
+line 0 4
+transport input ssh
+login local
 
 
 R2
@@ -106,6 +121,16 @@ exit
 route-map REDISTRIBUTE
 match interface e1/1
 set community no-export
+
+ip domain name LAB
+ip ssh version 2
+crypto key generate rsa
+2048
+username cisco secret cisco
+enable secret cisco
+line 0 4
+transport input ssh
+login local
 
 
 R3
@@ -159,6 +184,7 @@ timers bgp 5 15
 
 neighbor 1.1.1.1 send-community
 neighbor 4.4.4.4 send-community
+neighbor 2.2.2.2 send-community
 
 redistribute connected route-map REDISTRIBUTE
 
@@ -174,7 +200,15 @@ set community no-export
 route-map TASK5
 set local-preference 5000
 
-
+ip domain name LAB
+ip ssh version 2
+crypto key generate rsa
+2048
+username cisco secret cisco
+enable secret cisco
+line 0 4
+transport input ssh
+login local
 
 R4
 ----
@@ -224,3 +258,13 @@ exit
 route-map REDISTRIBUTE
 match interface e1/1
 set community no-export
+
+ip domain name LAB
+ip ssh version 2
+crypto key generate rsa
+2048
+username cisco secret cisco
+enable secret cisco
+line 0 4
+transport input ssh
+login local

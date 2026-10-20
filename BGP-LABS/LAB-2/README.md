@@ -8,7 +8,7 @@ This lab builds a four-router iBGP domain (AS 254) on top of an EIGRP underlay. 
 
 The lab forces you to think about *where* a configuration takes effect: a peer group is local to one router, a `send-community` is per neighbor, and a local-preference set on the right router becomes network-wide because iBGP carries it.
 
-**Skills demonstrated:** EIGRP underlay design, iBGP peering on loopbacks (`update-source`), peer-group templates, route reflector redundancy and cluster ID, TCP MD5 authentication, timer tuning, selective redistribution, well-known communities, local-preference path control, SSH management access for automation, and structured troubleshooting.
+**Skills demonstrated:** EIGRP underlay design, iBGP peering on loopbacks (`update-source`), peer-group templates, route reflector redundancy and cluster ID, TCP MD5 authentication, timer tuning, selective redistribution, well-known communities, local-preference path control, Ansible-based verification automation over SSH, and structured troubleshooting.
 
 ## 2. Topology
 
@@ -21,7 +21,7 @@ The lab forces you to think about *where* a configuration takes effect: a peer g
 
 The book uses serial and FastEthernet interfaces; this build uses Ethernet interfaces in EVE-NG, so the names differ from the book's figure. The physical topology is a chain: **R2 — R1 — R3 — R4**.
 
-The 200.0.0.0/30 segment on R1 e1/2 was added after the five tasks, to support the automation described in section 4.7. It is deliberately kept out of EIGRP and BGP, so it does not change the lab design.
+The 200.0.0.0/30 segment on R1 e1/2 was added after the five tasks, to support the automation described in section 6. It is deliberately kept out of EIGRP and BGP, so it does not change the lab design.
 
 | Router | LAN (interface) | Loopback 0 / Router ID |
 |---|---|---|
@@ -191,7 +191,7 @@ line 0 4
 - `enable secret` gives automation tools access to privileged EXEC.
 - The credentials are lab-only. They are published here because the environment is an isolated EVE-NG lab; never reuse them anywhere real.
 
-R1 also gets one extra interface, `Ethernet1/2` (200.0.0.2/30), for the connection to the automation environment. The segment is not in EIGRP, and the `REDISTRIBUTE` route-map matches only the LAN interface, so it never enters BGP. This keeps the `show ip bgp` table identical to the one verified in section 5.
+R1 also gets one extra interface, `Ethernet1/2` (200.0.0.2/30), for the connection to the automation environment. The segment is not in EIGRP, and the `REDISTRIBUTE` route-map matches only the LAN interface, so it never enters BGP. This keeps the `show ip bgp` table identical to the one verified in section 5. The automation that uses this access is described in section 6.
 
 ### 4.8 Complete configurations
 
@@ -425,24 +425,24 @@ line 0 4
 
 ## 5. Verification
 
-> Evidence for every item is stored in `screenshots/` and `pcap/` (see section 8).
+Verification is automated. Each check below is collected by an Ansible playbook (see section 6) from all four routers in a single run, and the raw `show` and `ping` output is stored per router and per check under [`Automation/bgp_lab2_verification/results/`](Automation/bgp_lab2_verification/results/). That output is the evidence for this table. The playbooks collect the output; the pass criteria in the "Expected result" column are judged by reading it (see the limitations in section 6.8).
 
-| # | Check | Command | Expected result | Evidence |
-|---|---|---|---|---|
-| 1 | EIGRP neighbors | `show ip eigrp neighbors` | R1 and R3: 2 neighbors; R2 and R4: 1 neighbor | `screenshots/01-eigrp-neighbors-*.png` |
-| 2 | Loopbacks reachable | `show ip route eigrp`, `ping 4.4.4.4 source loopback 0` | All loopbacks learned via EIGRP; pings succeed | `screenshots/02-loopback-reachability.png` |
-| 3 | Sessions up | `show ip bgp summary` | R1/R3: 3 neighbors, R2/R4: 2 neighbors, all with a numeric `State/PfxRcd` | `screenshots/03-bgp-summary-*.png` |
-| 4 | Router IDs | `show ip bgp summary` | `BGP router identifier` equals the loopback | `screenshots/03-bgp-summary-*.png` |
-| 5 | Timers and MD5 | `show ip bgp neighbors <ip> \| include hold\|keepalive\|md5` | Hold 15, keepalive 5, MD5 in use | `screenshots/04-timers-md5.png` |
-| 6 | Peer group | `show ip bgp peer-group TASK2` on R2 and R4 | Members 1.1.1.1 and 3.3.3.3 | `screenshots/05-peer-group.png` |
-| 7 | Reflector clients | `show ip bgp neighbors <ip> \| include Route-Reflector` on R1 and R3 | R2 and R4 reported as clients | `screenshots/06-rr-clients.png` |
-| 8 | Cluster ID and loop prevention | `show ip bgp 150.2.2.0` on R4 | `Originator: 2.2.2.2`, `Cluster list: 13.13.13.13` | `screenshots/07-cluster-list.png` |
-| 9 | Only the LANs in BGP | `show ip bgp` | Only 150.x.x.0/24 prefixes; no loopbacks, 10.0.0.x or 200.0.0.0/30 | `screenshots/08-bgp-table.png` |
-| 10 | Community on every path | `show ip bgp 150.2.2.0` on R4, `show ip bgp 150.4.4.0` on R2, `show ip bgp community no-export` | `Community: no-export` on **each** path | `screenshots/09-community-*.png` |
-| 11 | send-community per neighbor | `show ip bgp neighbors <ip> \| include community` | Standard community sent to every neighbor | `screenshots/10-send-community.png` |
-| 12 | Path preference | `show ip bgp 150.4.4.0` on R2, `show ip bgp 150.2.2.0` on R4 | Best path (`>`) via 3.3.3.3 with `localpref 5000`; backup via 1.1.1.1 with `localpref 100` | `screenshots/11-localpref-*.png` |
-| 13 | Full reachability | Extended ping, source = LAN address, all pairs | 100 % success | `screenshots/12-ping-matrix.png` |
-| 14 | SSH management access | `show ip ssh` on each router | `SSH Enabled - version 2.0` | `screenshots/13-ssh.png` |
+| # | Check | Expected result | Playbook and results folder |
+|---|---|---|---|
+| 1 | EIGRP neighbors | R1 and R3: 2 neighbors; R2 and R4: 1 neighbor | [`01_eigrp_neighbors`](Automation/bgp_lab2_verification/results/01_eigrp_neighbors/) |
+| 2 | Loopbacks reachable | All loopbacks learned via EIGRP; pings to 4.4.4.4 sourced from each loopback succeed | [`02_loopback_reachability`](Automation/bgp_lab2_verification/results/02_loopback_reachability/) |
+| 3 | Sessions up | R1/R3: 3 neighbors, R2/R4: 2 neighbors, all with a numeric `State/PfxRcd` | [`03_bgp_summary_router_id`](Automation/bgp_lab2_verification/results/03_bgp_summary_router_id/) |
+| 4 | Router IDs | `BGP router identifier` equals the router's loopback | [`03_bgp_summary_router_id`](Automation/bgp_lab2_verification/results/03_bgp_summary_router_id/) |
+| 5 | Timers and MD5 | Hold time 15, keepalive 5, MD5 password in use, for every neighbor | [`05_timers_md5`](Automation/bgp_lab2_verification/results/05_timers_md5/) |
+| 6 | Peer group | R2 and R4: group `TASK2` with members 1.1.1.1 and 3.3.3.3 | [`06_peer_group`](Automation/bgp_lab2_verification/results/06_peer_group/) |
+| 7 | Reflector clients | R1 and R3 report R2 and R4 as route-reflector clients | [`07_reflector_clients`](Automation/bgp_lab2_verification/results/07_reflector_clients/) |
+| 8 | Cluster ID and loop prevention | R4 sees 150.2.2.0/24 with `Originator: 2.2.2.2` and `Cluster list: 13.13.13.13` | [`08_cluster_list`](Automation/bgp_lab2_verification/results/08_cluster_list/) |
+| 9 | Only the LANs in BGP | Only 150.x.x.0/24 prefixes; no loopbacks, 10.0.0.x or 200.0.0.0/30 | [`09_bgp_table`](Automation/bgp_lab2_verification/results/09_bgp_table/) |
+| 10 | Community on every path | `Community: no-export` on **each** path of each LAN prefix | [`10_communities`](Automation/bgp_lab2_verification/results/10_communities/) |
+| 11 | send-community per neighbor | The community attribute is sent to every neighbor of every router | [`11_send_community`](Automation/bgp_lab2_verification/results/11_send_community/) |
+| 12 | Path preference | R2 and R4: best path (`>`) via 3.3.3.3 with `localpref 5000`; backup via 1.1.1.1 with `localpref 100` | [`12_path_preference`](Automation/bgp_lab2_verification/results/12_path_preference/) |
+| 13 | Full LAN reachability | Every router reaches the other three LANs, sourced from its own LAN address (100 % success) | [`13_ping_matrix`](Automation/bgp_lab2_verification/results/13_ping_matrix/) |
+| 14 | SSH management access | Every router accepts SSH logins from the controller | No dedicated playbook: every playbook connects over SSH with the local `cisco` account, so a successful run proves it |
 
 ### Packet-level validation (Wireshark)
 
@@ -473,7 +473,184 @@ Notes:
 - Filters on a specific attribute *value* (for example `LOCAL_PREF == 5000`) depend on the Wireshark version's field names. The easiest way to build them is to expand the attribute in the packet details, right-click the value and choose *Apply as Filter*.
 - The attribute-type filters use the BGP path attribute type codes: 5 = LOCAL_PREF, 8 = COMMUNITIES, 9 = ORIGINATOR_ID, 10 = CLUSTER_LIST.
 
-## 6. Concepts Learned
+## 6. Verification Automation (Ansible)
+
+### 6.1 Overview
+
+After the lab was finished, the verification from section 5 was automated with Ansible. Instead of logging in to four routers and typing the same `show` commands by hand, one command connects to all four routers over SSH, runs a fixed set of read-only commands, and writes the output into a results folder that is committed to the repository next to the README.
+
+Why this approach:
+
+- **Repeatable.** The same commands run in the same way after every change, for example after the `send-community` fix, and `git diff` on the results shows what changed.
+- **Parallel.** Ansible runs each task on all four routers at once (its default of five parallel forks covers the four routers).
+- **Evidence by design.** Every check in section 5 has a playbook, and every playbook writes one file per router, so the repository documents the verification without screenshots.
+- **Safe.** The playbooks only run `show` and `ping` commands through `ios_command`; they never enter configuration mode.
+
+### 6.2 Repository layout
+
+```
+LAB-2/Automation/bgp_lab2_verification/
+├── ansible.cfg        # Ansible defaults and connection timeouts
+├── inventory.ini      # the four routers and how to log in to them
+├── run_all.sh         # runs every playbook in order
+├── playbooks/         # 13 playbooks, one per verification
+│   ├── 01_eigrp_neighbors.yml
+│   ├── 02_loopback_reachability.yml
+│   ├── 03_bgp_summary_router_id.yml
+│   ├── 05_timers_md5.yml
+│   ├── 06_peer_group.yml
+│   ├── 07_reflector_clients.yml
+│   ├── 08_cluster_list.yml
+│   ├── 09_bgp_table.yml
+│   ├── 10_communities.yml
+│   ├── 11_send_community.yml
+│   ├── 12_path_preference.yml
+│   └── 13_ping_matrix.yml
+└── results/           # created by the playbooks
+    └── <playbook name>/R1.txt, R2.txt, R3.txt, R4.txt
+```
+
+The playbook numbers follow the check numbers in section 5. There is no `04` playbook because check 4 (router IDs) is read from the same `show ip bgp summary` output as check 3.
+
+### 6.3 Prerequisites
+
+- Ansible on a controller machine, with the `cisco.ios` and `ansible.netcommon` collections (`ansible-galaxy collection install cisco.ios ansible.netcommon`) and the `paramiko` Python library, which is the SSH transport configured in the inventory.
+- The SSH baseline from section 4.7 on every router: local user `cisco`, `enable secret`, SSHv2, and SSH-only VTY lines.
+- IP reachability from the controller to the routers' Loopback 0 addresses, because the inventory addresses the routers by their loopbacks.
+
+### 6.4 Configuration files
+
+**`ansible.cfg`**
+
+| Setting | Value | Purpose |
+|---|---|---|
+| `inventory` | `inventory.ini` | Use the lab inventory without passing `-i` |
+| `host_key_checking` | `False` | Do not stop to ask about unknown SSH host keys; acceptable only in a disposable lab |
+| `retry_files_enabled` | `False` | Do not create `.retry` files after failed runs |
+| `stdout_callback` | `default` | Standard console output |
+| `interpreter_python` | `auto_silent` | Detect the Python interpreter without warnings |
+| `connect_timeout` (persistent connection) | `30` s | Time allowed to open the SSH session |
+| `command_timeout` (persistent connection) | `60` s | Time allowed for a single command; this matters for `ping`, which waits for replies |
+
+**`inventory.ini`**
+
+```
+[routers]
+R1 ansible_host=1.1.1.1 ...
+R2 ansible_host=2.2.2.2 ...
+R3 ansible_host=3.3.3.3 ...
+R4 ansible_host=4.4.4.4 ...
+
+[routers:vars]
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+ansible_user=cisco
+ansible_password=cisco
+ansible_become=true
+ansible_become_method=enable
+ansible_become_password=cisco
+```
+
+- All four routers form the group `routers`, which every playbook targets (`hosts: routers`). The host names `R1` to `R4` are also the keys used inside the playbooks.
+- Each router is addressed by its **Loopback 0** address. The control machine therefore reaches R2, R3 and R4 only through the lab network itself, so verification depends on a working underlay.
+- `network_cli` is the connection type for CLI-based network devices, and `ansible_network_os=cisco.ios.ios` selects the IOS behaviour. `ansible_become` with the `enable` method moves every session into privileged EXEC using the enable secret from section 4.7.
+- The SSH library is set to `paramiko` on each host and to `libssh` for the whole group. The per-host value takes precedence in Ansible's variable order, so `paramiko` is the one in use and the group-level `libssh` line is redundant.
+- The credentials are in clear text because this is an isolated lab. Outside a lab they belong in Ansible Vault.
+
+**`run_all.sh`**
+
+```
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+for playbook in playbooks/*.yml; do
+  echo "===== Running ${playbook} ====="
+  ansible-playbook "$playbook"
+done
+```
+
+- `set -euo pipefail` makes the script stop on the first error, on an unset variable and on a failed command inside a pipe. A failing playbook therefore stops the run instead of being silently skipped.
+- `cd "$(dirname "$0")"` moves into the script's own folder, so `ansible.cfg`, `inventory.ini` and the relative `playbooks/` path are found no matter where the script is launched from.
+- The `for` loop runs the playbooks in alphabetical order, which is the numeric order 01 to 13 because of the file-name prefixes.
+- Run everything with `./run_all.sh` (the file needs the executable bit), or a single check with, for example, `ansible-playbook playbooks/09_bgp_table.yml`.
+
+### 6.5 Anatomy of a playbook
+
+All 13 playbooks share the same template and differ only in their name, their result folder and their command lists.
+
+```yaml
+- name: Verification 01 - EIGRP neighbors
+  hosts: routers
+  gather_facts: false
+  vars:
+    result_dir: "{{ playbook_dir }}/../results/01_eigrp_neighbors"
+    verification_commands:
+      R1:
+        - "show ip eigrp neighbors"
+      R2: ...
+  tasks:
+    - name: Ensure local result directory exists      # task 1
+    - name: Run verification commands                 # task 2
+    - name: Save command output for this router       # task 3
+```
+
+- **`gather_facts: false`** skips fact collection, which is not needed and would only add time.
+- **`result_dir`** is built from `playbook_dir`, so results always land in `results/<playbook name>/` next to the `playbooks/` folder.
+- **`verification_commands`** is a dictionary keyed by router name. Each router runs only its own list, which is how a check can ask R1 for one thing and R4 for another.
+- **Task 1** creates the result folder with the `file` module. It runs on the controller (`delegate_to: localhost`) and only once (`run_once: true`), not once per router. `become: false` stops the global enable-mode setting from being applied to these local tasks.
+- **Task 2** runs the router's commands with `cisco.ios.ios_command` and registers the result. `verification_output.stdout` is a list with one entry per command, in the same order as the commands.
+- **Task 3** writes one text file per router with the `copy` module. A Jinja2 loop walks `verification_output.stdout`, and `loop.index0` picks the matching command from the dictionary so each output is labelled with the command that produced it. The timestamp comes from `date -Is` on the controller, in ISO 8601 format with the time zone.
+
+Each run overwrites the previous file for that router and check, so the folder always holds the latest run, and the git history keeps the older ones. The saved file has this format:
+
+```
+Verification: Verification 01 - EIGRP neighbors
+Router: R1
+Timestamp (controller): <ISO 8601 timestamp>
+========================================
+COMMAND 1: show ip eigrp neighbors
+----------------------------------------
+<command output>
+```
+
+When a playbook has several commands, the `COMMAND n:` blocks follow one another in the same file.
+
+### 6.6 Playbook catalogue
+
+| Playbook | Check | Commands (per router) | What to look for in the output |
+|---|---|---|---|
+| `01_eigrp_neighbors` | 1 | `show ip eigrp neighbors` on all routers | Neighbor count: 2 on R1 and R3, 1 on R2 and R4 |
+| `02_loopback_reachability` | 2 | `show ip route eigrp`; `ping 4.4.4.4 source <own loopback>` | All other loopbacks in the EIGRP routes; successful pings. On R4 the ping targets its own loopback, so it is a local self-test and does not test the network |
+| `03_bgp_summary_router_id` | 3 and 4 | `show ip bgp summary` | The router identifier equals the loopback, local AS 254, every neighbor with a numeric `State/PfxRcd` |
+| `05_timers_md5` | 5 | For each neighbor: `show ip bgp neighbors <ip> \| include hold time\|keepalive\|MD5\|md5\|Password` | Hold time 15, keepalive 5, and the MD5 password indication. The filter lists several spellings so it matches whichever wording the IOS version uses |
+| `06_peer_group` | 6 | R2 and R4: `show ip bgp peer-group TASK2`; R1 and R3: `show ip bgp summary` | On R2 and R4, group `TASK2` with members 1.1.1.1 and 3.3.3.3. On R1 and R3 the summary shows per-neighbor sessions up; the absence of a peer group there is a configuration requirement confirmed from the configs in section 4 |
+| `07_reflector_clients` | 7 | R1 and R3: `show ip bgp neighbors <ip> \| include Route-Reflector` for 2.2.2.2 and 4.4.4.4; R2 and R4: `show ip bgp summary` | Both clients reported as route-reflector clients on each reflector. The R1↔R3 neighbor is deliberately not queried, because it is not a client |
+| `08_cluster_list` | 8 | R1 and R4: `show ip bgp 150.2.2.0`; R2 and R3: `show ip bgp summary` | On R4, `Originator: 2.2.2.2` and `Cluster list: 13.13.13.13`. Compare the number of paths on R1 and R4: with the shared cluster ID, R1 should keep only its direct path from R2, while R4 keeps one path from each reflector |
+| `09_bgp_table` | 9 | `show ip bgp` on all routers | Exactly the four 150.x.x.0/24 prefixes, nothing else |
+| `10_communities` | 10 | R1 and R3: `show ip bgp community no-export`; R2: `show ip bgp 150.4.4.0` and the community query; R4: `show ip bgp 150.2.2.0` and the community query | `Community: no-export` on every path of the prefix, and all LAN prefixes listed by the community query |
+| `11_send_community` | 11 | For each neighbor: `show ip bgp neighbors <ip> \| include community` | A line stating that the community attribute is sent to the neighbor, for every neighbor on every router. This is the check that exposes the missing `send-community` problem from the troubleshooting log |
+| `12_path_preference` | 12 | R1: 150.2.2.0 and 150.4.4.0; R2: 150.4.4.0; R3: 150.2.2.0 and 150.4.4.0; R4: 150.2.2.0 (all `show ip bgp <prefix>`) | On R2 and R4 the best path (`>`) comes from 3.3.3.3 with `localpref 5000`, and the path from 1.1.1.1 keeps `localpref 100`. The R1 and R3 views give context for where the value is set |
+| `13_ping_matrix` | 13 | Each router pings the three other LANs, sourced from its own LAN address | Three successful pings per router, 12 in total. The `source` keyword is required, because the 10.0.0.x transit addresses are not advertised in BGP and the remote router could not reply to them |
+
+### 6.7 Typical workflow
+
+1. Bring the lab up and confirm that the controller can reach the loopbacks.
+2. Run `./run_all.sh`.
+3. Open the result files and compare them with the "Expected result" column in section 5.
+4. After any configuration change, rerun the affected playbook (or all of them) and review the difference with `git diff`; the timestamp lines will differ on every run.
+5. Commit the `results/` folder together with the README.
+
+### 6.8 Design decisions and limitations
+
+- **Evidence collection, not assertion.** The playbooks record what the routers say but do not decide pass or fail. The judgement is made by reading the files. A natural next step is to add `ansible.builtin.assert` tasks that test the output for the expected strings, so a run ends with PASS or FAIL per check.
+- **One playbook per verification.** Each check can be run alone, failures are easy to locate, and the result folders map one-to-one to the table in section 5. The cost is repeated boilerplate in 13 files; moving the shared tasks into a role or a common task file, with only the command lists left per playbook, would remove it.
+- **Hard-coded command lists.** The commands and neighbor addresses are written directly in each playbook, so adding a router means editing every file. Generating them from inventory variables would avoid that.
+- **Plain-text output.** The output is stored as text, not as structured data. Parsing it (for example with `ansible.netcommon.cli_parse`) would allow real comparisons and a summary table.
+- **Weak spots in a few checks.** The R4 loopback self-ping and the `show ip bgp summary` output collected on R1 and R3 for the peer-group check do not prove what their check names suggest; the table in section 6.6 says what each output does and does not show.
+- **Dependency on the underlay.** Because the routers are addressed by their loopbacks, a broken EIGRP underlay also breaks the verification itself, so a connection failure points to Task 2 before anything else.
+- **Credentials.** The username and passwords are in clear text, acceptable in this isolated lab only.
+
+## 7. Concepts Learned
 
 **iBGP peering on loopbacks.** BGP runs over TCP port 179, so it needs only IP reachability between the endpoints. An IGP supplies the loopback routes. `update-source` must be set on both sides, because each router checks the source address of incoming sessions.
 
@@ -491,7 +668,7 @@ Notes:
 
 **Where an attribute takes effect.** `weight` is local to the router and is never advertised, so it cannot satisfy "globally significant". Local preference is advertised inside the AS, so one router can influence the choice of several others.
 
-## 7. Troubleshooting Log
+## 8. Troubleshooting Log
 
 | Symptom | Root cause | How it was found | Fix |
 |---|---|---|---|
@@ -502,16 +679,23 @@ Notes:
 
 **Takeaway:** a prefix being present in the table, or a ping succeeding, does not prove the policy works. The community was missing from one of two paths while everything still looked reachable. Always inspect every path of a prefix, not only the best one, and check which router an attribute is actually set on.
 
-## 8. Repository Structure
+## 9. Repository Structure
 
 ```
-bgp-lab-02/
+BGP-LABS/LAB-2/
 ├── README.md
 ├── configs/        # running-config of R1–R4
-├── screenshots/    # verification evidence (section 5)
-└── pcap/           # bgp-lab-02.pcapng, single capture on the R1–R3 link (section 5)
+├── screenshots/    # topology figure (section 2)
+├── pcap/           # bgp-lab-02.pcapng, single capture on the R1–R3 link (section 5)
+└── Automation/
+    └── bgp_lab2_verification/
+        ├── ansible.cfg
+        ├── inventory.ini
+        ├── run_all.sh
+        ├── playbooks/    # 13 verification playbooks (section 6)
+        └── results/      # per-router output of every playbook (section 5 evidence)
 ```
 
-## 9. Conclusion
+## 10. Conclusion
 
-This lab combined an EIGRP underlay with an iBGP overlay built on loopback addresses, a redundant pair of route reflectors sharing a single cluster ID, and two small policies that each had a network-wide effect: a `no-export` community that keeps the LANs inside AS 254, and a local-preference set on one router that steers two others. The main lessons came from the mistakes. A broad `redistribute connected` pulled infrastructure prefixes into BGP, a missing `send-community` silently removed the protection on one of two paths, and a policy placed on the wrong router had no effect on the rest of the network. Verification was done at three levels: control plane (`show ip bgp` per prefix and per path, neighbor details), data plane (extended pings between all LANs), and packet level (a Wireshark capture of OPEN, KEEPALIVE and UPDATE messages showing loopback-sourced sessions, MD5, communities, cluster attributes and local preference).
+This lab combined an EIGRP underlay with an iBGP overlay built on loopback addresses, a redundant pair of route reflectors sharing a single cluster ID, and two small policies that each had a network-wide effect: a `no-export` community that keeps the LANs inside AS 254, and a local-preference set on one router that steers two others. The main lessons came from the mistakes. A broad `redistribute connected` pulled infrastructure prefixes into BGP, a missing `send-community` silently removed the protection on one of two paths, and a policy placed on the wrong router had no effect on the rest of the network. Verification was done at three levels: control plane (`show ip bgp` per prefix and per path, neighbor details), data plane (pings between all LANs), and packet level (a Wireshark capture of OPEN, KEEPALIVE and UPDATE messages showing loopback-sourced sessions, MD5, communities, cluster attributes and local preference). The control-plane and data-plane checks were then automated with 13 Ansible playbooks that collect the same read-only commands from all four routers in one run and store the output per router, which makes the verification repeatable and turns the repository itself into the evidence. The playbooks collect evidence rather than judge it, so the next step is to add automated pass/fail assertions.

@@ -1,0 +1,58 @@
+R2
+----
+en
+conf t
+hostname R2
+int e1/0
+duplex full
+no sh
+ip add 10.0.0.2 255.255.255.252
+int e1/1
+duplex full
+no sh
+ip add 150.2.2.2 255.255.255.0
+exit
+
+int loop0
+ip add 2.2.2.2 255.255.255.255
+no sh
+exit
+
+router eigrp 254
+network 10.0.0.0 0.0.0.3
+network 2.2.2.2 0.0.0.0
+
+router bgp 254
+bgp router-id 2.2.2.2
+neighbor TASK2 peer-group
+
+neighbor 1.1.1.1 remote-as 254
+neighbor 1.1.1.1 peer-group TASK2
+
+neighbor 3.3.3.3 remote-as 254
+neighbor 3.3.3.3 peer-group TASK2
+
+neighbor TASK2 password 0 CCNP
+neighbor TASK2 update-source loop0
+
+timers bgp 5 15
+
+neighbor TASK2 send-community
+
+redistribute connected route-map REDISTRIBUTE
+
+exit
+
+route-map REDISTRIBUTE
+match interface e1/1
+set community no-export
+
+ip domain name LAB
+ip ssh version 2
+crypto key generate rsa
+2048
+username cisco secret cisco
+enable secret cisco
+line 0 4
+transport input ssh
+login local

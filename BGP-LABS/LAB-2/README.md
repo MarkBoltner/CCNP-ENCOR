@@ -17,11 +17,11 @@ The lab forces you to think about *where* a configuration takes effect: a peer g
 | R1 – R2 | 10.0.0.0/30 | R1 e1/0 .1 / R2 e1/0 .2 |
 | R1 – R3 | 10.0.0.4/30 | R1 e1/1 .5 / R3 e1/0 .6 |
 | R3 – R4 | 10.0.0.12/30 | R3 e1/1 .13 / R4 e1/0 .14 |
-| Automation segment | 200.0.0.0/30 | R1 e1/2 .2 (not part of the lab design) |
+| WAN / automation segment | 200.0.0.0/30 | R1 e1/2 .2 (toward the WAN switch; in EIGRP, not in BGP) |
 
 The book uses serial and FastEthernet interfaces; this build uses Ethernet interfaces in EVE-NG, so the names differ from the book's figure. The physical topology is a chain: **R2 — R1 — R3 — R4**.
 
-The 200.0.0.0/30 segment on R1 e1/2 was added after the five tasks, to support the automation described in section 6. It is deliberately kept out of EIGRP and BGP, so it does not change the lab design.
+The 200.0.0.0/30 segment on R1 e1/2 was added after the five tasks. It connects R1 to the WAN switch, which gives the lab its Internet access and lets the automation described in section 6 reach the routers. The segment is advertised in EIGRP (R1 only) but is not redistributed into BGP, so the BGP design is unchanged. The WAN switch itself is outside the scope of this lab and its configuration is not included.
 
 | Router | LAN (interface) | Loopback 0 / Router ID |
 |---|---|---|
@@ -74,7 +74,7 @@ router eigrp 254
  network 1.1.1.1 0.0.0.0
 ```
 
-The `network` statements with wildcard masks enable EIGRP only on the transit links and the loopback. The 150.x.x.0/24 LANs are deliberately left out, so they are carried by BGP alone. The loopbacks must be in EIGRP because BGP sessions between non-adjacent routers need IP reachability to each other's loopback.
+The `network` statements with wildcard masks enable EIGRP only on the transit links and the loopback. The 150.x.x.0/24 LANs are deliberately left out, so they are carried by BGP alone. The loopbacks must be in EIGRP because BGP sessions between non-adjacent routers need IP reachability to each other's loopback. R1 has one extra statement, `network 200.0.0.0 0.0.0.3`, which enables EIGRP on its WAN-facing interface (see section 4.7).
 
 ### 4.2 iBGP on loopbacks (R1 and R3: per-neighbor, no peer group)
 
@@ -191,7 +191,17 @@ line 0 4
 - `enable secret` gives automation tools access to privileged EXEC.
 - The credentials are lab-only. They are published here because the environment is an isolated EVE-NG lab; never reuse them anywhere real.
 
-R1 also gets one extra interface, `Ethernet1/2` (200.0.0.2/30), for the connection to the automation environment. The segment is not in EIGRP, and the `REDISTRIBUTE` route-map matches only the LAN interface, so it never enters BGP. This keeps the `show ip bgp` table identical to the one verified in section 5. The automation that uses this access is described in section 6.
+R1 also gets one extra interface, `Ethernet1/2` (200.0.0.2/30), facing the WAN switch that connects the lab to the Internet and provides the path used by the automation.
+
+```
+! R1 only
+router eigrp 254
+ network 200.0.0.0 0.0.0.3
+```
+
+- The `network` statement enables EIGRP on `Ethernet1/2` and advertises 200.0.0.0/30 to the rest of the lab. R2, R3 and R4 therefore learn the segment through EIGRP and can send traffic toward the WAN side through R1. Whether the WAN switch forms an EIGRP adjacency depends on its own configuration, which is outside this lab.
+- The segment stays out of BGP: `redistribute connected` is controlled by the `REDISTRIBUTE` route-map, which matches only the LAN interface, and EIGRP routes are not redistributed into BGP. The `show ip bgp` table is therefore identical to the one verified in section 5.
+- The automation that uses this access is described in section 6.
 
 ### 4.8 Complete configurations
 
@@ -224,6 +234,7 @@ router eigrp 254
  network 10.0.0.0 0.0.0.3
  network 10.0.0.4 0.0.0.3
  network 1.1.1.1 0.0.0.0
+ network 200.0.0.0 0.0.0.3
 !
 route-map REDISTRIBUTE permit 10
  match interface Ethernet1/3
@@ -429,8 +440,8 @@ Verification is automated. Each check below is collected by an Ansible playbook 
 
 | # | Check | Expected result | Playbook and results folder |
 |---|---|---|---|
-| 1 | EIGRP neighbors | R1 and R3: 2 neighbors; R2 and R4: 1 neighbor | [`01_eigrp_neighbors`](Automation/bgp_lab2_verification/results/01_eigrp_neighbors/) |
-| 2 | Loopbacks reachable | All loopbacks learned via EIGRP; pings to 4.4.4.4 sourced from each loopback succeed | [`02_loopback_reachability`](Automation/bgp_lab2_verification/results/02_loopback_reachability/) |
+| 1 | EIGRP neighbors | R1 and R3: 2 neighbors; R2 and R4: 1 neighbor (R1 shows one more only if the WAN switch also runs EIGRP) | [`01_eigrp_neighbors`](Automation/bgp_lab2_verification/results/01_eigrp_neighbors/) |
+| 2 | Loopbacks reachable | All loopbacks learned via EIGRP (R2, R3 and R4 also learn 200.0.0.0/30); pings to 4.4.4.4 sourced from each loopback succeed | [`02_loopback_reachability`](Automation/bgp_lab2_verification/results/02_loopback_reachability/) |
 | 3 | Sessions up | R1/R3: 3 neighbors, R2/R4: 2 neighbors, all with a numeric `State/PfxRcd` | [`03_bgp_summary_router_id`](Automation/bgp_lab2_verification/results/03_bgp_summary_router_id/) |
 | 4 | Router IDs | `BGP router identifier` equals the router's loopback | [`03_bgp_summary_router_id`](Automation/bgp_lab2_verification/results/03_bgp_summary_router_id/) |
 | 5 | Timers and MD5 | Hold time 15, keepalive 5, MD5 password in use, for every neighbor | [`05_timers_md5`](Automation/bgp_lab2_verification/results/05_timers_md5/) |
@@ -516,7 +527,7 @@ The playbook numbers follow the check numbers in section 5. There is no `04` pla
 
 - Ansible on a controller machine, with the `cisco.ios` and `ansible.netcommon` collections (`ansible-galaxy collection install cisco.ios ansible.netcommon`) and the `paramiko` Python library, which is the SSH transport configured in the inventory.
 - The SSH baseline from section 4.7 on every router: local user `cisco`, `enable secret`, SSHv2, and SSH-only VTY lines.
-- IP reachability from the controller to the routers' Loopback 0 addresses, because the inventory addresses the routers by their loopbacks.
+- IP reachability from the controller to the routers' Loopback 0 addresses, because the inventory addresses the routers by their loopbacks. The controller enters the lab through the WAN switch and R1's `Ethernet1/2`, and EIGRP carries the loopbacks and the 200.0.0.0/30 segment between the lab routers.
 
 ### 6.4 Configuration files
 
@@ -552,7 +563,7 @@ ansible_become_password=cisco
 ```
 
 - All four routers form the group `routers`, which every playbook targets (`hosts: routers`). The host names `R1` to `R4` are also the keys used inside the playbooks.
-- Each router is addressed by its **Loopback 0** address. The control machine therefore reaches R2, R3 and R4 only through the lab network itself, so verification depends on a working underlay.
+- Each router is addressed by its **Loopback 0** address. The control machine therefore reaches R2, R3 and R4 only through R1 and the lab network itself, so verification depends on a working underlay.
 - `network_cli` is the connection type for CLI-based network devices, and `ansible_network_os=cisco.ios.ios` selects the IOS behaviour. `ansible_become` with the `enable` method moves every session into privileged EXEC using the enable secret from section 4.7.
 - The SSH library is set to `paramiko` on each host and to `libssh` for the whole group. The per-host value takes precedence in Ansible's variable order, so `paramiko` is the one in use and the group-level `libssh` line is redundant.
 - The credentials are in clear text because this is an isolated lab. Outside a lab they belong in Ansible Vault.
@@ -620,7 +631,7 @@ When a playbook has several commands, the `COMMAND n:` blocks follow one another
 | Playbook | Check | Commands (per router) | What to look for in the output |
 |---|---|---|---|
 | `01_eigrp_neighbors` | 1 | `show ip eigrp neighbors` on all routers | Neighbor count: 2 on R1 and R3, 1 on R2 and R4 |
-| `02_loopback_reachability` | 2 | `show ip route eigrp`; `ping 4.4.4.4 source <own loopback>` | All other loopbacks in the EIGRP routes; successful pings. On R4 the ping targets its own loopback, so it is a local self-test and does not test the network |
+| `02_loopback_reachability` | 2 | `show ip route eigrp`; `ping 4.4.4.4 source <own loopback>` | All other loopbacks in the EIGRP routes (plus 200.0.0.0/30 on R2, R3 and R4); successful pings. On R4 the ping targets its own loopback, so it is a local self-test and does not test the network |
 | `03_bgp_summary_router_id` | 3 and 4 | `show ip bgp summary` | The router identifier equals the loopback, local AS 254, every neighbor with a numeric `State/PfxRcd` |
 | `05_timers_md5` | 5 | For each neighbor: `show ip bgp neighbors <ip> \| include hold time\|keepalive\|MD5\|md5\|Password` | Hold time 15, keepalive 5, and the MD5 password indication. The filter lists several spellings so it matches whichever wording the IOS version uses |
 | `06_peer_group` | 6 | R2 and R4: `show ip bgp peer-group TASK2`; R1 and R3: `show ip bgp summary` | On R2 and R4, group `TASK2` with members 1.1.1.1 and 3.3.3.3. On R1 and R3 the summary shows per-neighbor sessions up; the absence of a peer group there is a configuration requirement confirmed from the configs in section 4 |

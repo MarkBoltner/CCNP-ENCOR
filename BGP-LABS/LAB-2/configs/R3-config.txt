@@ -1,0 +1,76 @@
+R3
+----
+en
+conf t
+hostname R3
+int e1/0
+duplex full
+no sh
+ip add 10.0.0.6 255.255.255.252
+int e1/1
+duplex full
+no sh
+ip add 10.0.0.13 255.255.255.252
+int e1/2
+duplex full
+no sh
+ip add 150.3.3.3 255.255.255.0
+exit
+
+int loop0
+ip add 3.3.3.3 255.255.255.255
+no sh
+exit
+
+router eigrp 254
+network 10.0.0.12 0.0.0.3
+network 10.0.0.4 0.0.0.3
+network 3.3.3.3 0.0.0.0
+
+router bgp 254
+bgp router-id 3.3.3.3
+neighbor 1.1.1.1 remote-as 254
+neighbor 1.1.1.1 password 0 CCNP
+neighbor 1.1.1.1 update-source loop0
+
+neighbor 2.2.2.2 remote-as 254
+neighbor 2.2.2.2 password 0 CCNP
+neighbor 2.2.2.2 update-source loop0
+neighbor 2.2.2.2 route-reflector-client
+
+neighbor 4.4.4.4 remote-as 254
+neighbor 4.4.4.4 password 0 CCNP
+neighbor 4.4.4.4 update-source loop0
+neighbor 4.4.4.4 route-reflector-client
+
+bgp cluster-id 13.13.13.13
+
+timers bgp 5 15
+
+neighbor 1.1.1.1 send-community
+neighbor 4.4.4.4 send-community
+neighbor 2.2.2.2 send-community
+
+redistribute connected route-map REDISTRIBUTE
+
+neighbor 2.2.2.2 route-map TASK5 in
+neighbor 4.4.4.4 route-map TASK5 in
+
+exit
+
+route-map REDISTRIBUTE
+match interface e1/2
+set community no-export
+
+route-map TASK5
+set local-preference 5000
+
+ip domain name LAB
+ip ssh version 2
+crypto key generate rsa
+2048
+username cisco secret cisco
+enable secret cisco
+line 0 4
+transport input ssh
+login local
